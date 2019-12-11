@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package service;
+
+service LKPubsub {
+  rpc Put(PutRequest) returns (PutReply) {}
+
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeReply) {}
+}
+
+message PutRequest {
+  bytes topic = 1;
+  bytes key = 2;
+  bytes data = 3;
+}
+
+message PutReply {
+  uint64 offset = 1;
+}
+
+message SubscribeRequest {
+  bytes topic = 1;
+  uint64 starting_offset = 2;
+}
+
+message SubscribeReply {
+  bytes key = 1;
+  bytes data = 2;
+  uint64 offset = 3;
+}
