@@ -112,7 +112,8 @@ func (s *server) Put(ctx context.Context, in *pb.PutRequest) (*pb.PutReply, erro
 	key := fmt_key(in.Topic, in.Key, offset)
 
 	err := s.db.Update(func(tx *badger.Txn) error {
-		return tx.Set(key, in.Data)
+		entry := badger.NewEntry(key, in.Data).WithTTL(s.config.retention)
+		return tx.SetEntry(entry)
 	})
 	if err != nil {
 		return nil, err
