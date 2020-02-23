@@ -1,4 +1,4 @@
-module github.com/marvelm/lk-pubsub
+module github.com/marvelm/nofuss-pubsub
 
 go 1.13
 

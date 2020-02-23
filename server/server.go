@@ -7,7 +7,7 @@ import (
 
 	"github.com/dgraph-io/badger"
 	badger_pb "github.com/dgraph-io/badger/pb"
-	pb "github.com/marvelm/lk-pubsub/service"
+	pb "github.com/marvelm/nofuss-pubsub/service"
 )
 
 type server struct {
@@ -131,6 +131,7 @@ func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_Subscribe
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
+		// TODO add starting offset to prefix when seeking
 		prefix := fmt_topic_prefix(in.Topic)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()

@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	pb "github.com/marvelm/lk-pubsub/service"
+	pb "github.com/marvelm/nofuss-pubsub/service"
 )
 
 type Config struct {

@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 
-	pb "github.com/marvelm/lk-pubsub/service"
+	pb "github.com/marvelm/nofuss-pubsub/service"
 
 	"github.com/dgraph-io/badger"
 	"google.golang.org/grpc"
