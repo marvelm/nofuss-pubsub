@@ -18,7 +18,10 @@ type server struct {
 	pb.UnimplementedLKPubsubServer
 }
 
-var key_prefix_internal = []byte("pubsub_")
+// key_prefix_internal is for storing internal information
+var key_prefix_internal = []byte("pubsub_i")
+
+// key_prefix_topic is used for topic keys
 var key_prefix_topic = []byte("pubsub_t")
 
 const key_separator byte = 0x0
@@ -57,6 +60,27 @@ func fmt_topic_prefix(topic []byte) []byte {
 	return b
 }
 
+// fmt_topic_prefix_with_offset yields the byte prefix for a topic for seeking
+// This is almost the same as fmt_key, but missing only the key
+func fmt_topic_prefix_with_offset(topic []byte, offset uint64) []byte {
+	// convert offset to bytes
+	offset_b := make([]byte, 8)
+	binary.BigEndian.PutUint64(offset_b, offset)
+
+	// TODO pick a starting size to prevent allocations
+	b := make([]byte, 0)
+	b = append(b, key_prefix_topic...)
+	b = append(b, key_separator)
+
+	b = append(b, topic...)
+	b = append(b, key_separator)
+
+	b = append(b, offset_b...)
+	b = append(b, key_separator)
+
+	return b
+}
+
 // extracts a fmted_key (from the database) into its parts (original key and offset)
 func extract_from_key(fmted_key []byte, topic []byte) (key []byte, offset uint64) {
 	topic_start_idx := len(key_prefix_topic)          // - 1 + len(key_separator)
@@ -71,6 +95,8 @@ func extract_from_key(fmted_key []byte, topic []byte) (key []byte, offset uint64
 	return
 }
 
+// gen_offsets generates unique, sequential offsets
+// This property is maintained even after restarting
 func gen_offsets(ctx context.Context, db *badger.DB) <-chan uint64 {
 	out := make(chan uint64)
 
@@ -79,6 +105,8 @@ func gen_offsets(ctx context.Context, db *badger.DB) <-chan uint64 {
 	key = append(key, key_separator)
 	key = append(key, []byte("offsets")...)
 
+	// The bandwidth is the number of offsets which
+	// are generated and kept in memory to be used
 	seq, err := db.GetSequence(key, 1000)
 	if err != nil {
 		log.Fatal(err)
@@ -131,9 +159,10 @@ func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_Subscribe
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		// TODO add starting offset to prefix when seeking
-		prefix := fmt_topic_prefix(in.Topic)
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		topic_prefix := fmt_topic_prefix(in.Topic)
+		seek_prefix := fmt_topic_prefix_with_offset(in.Topic, in.StartingOffset)
+
+		for it.Seek(seek_prefix); it.ValidForPrefix(topic_prefix); it.Next() {
 			item := it.Item()
 			key := item.Key()
 			_, offset := extract_from_key(key, in.Topic)
@@ -141,7 +170,7 @@ func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_Subscribe
 				continue
 			}
 
-			// get the value and send it iteration
+			// get the value and send it
 			err := item.Value(func(b []byte) error {
 				return stream.Send(&pb.SubscribeReply{
 					Key:    key,
