@@ -19,10 +19,8 @@ func NewClient(ctx context.Context, config Config) (*pb.NoFussPubSubClient, erro
 		return nil, fmt.Errorf("did not connect: %v", err)
 	}
 	go func() {
-		select {
-		case <-ctx.Done():
-			conn.Close()
-		}
+		<-ctx.Done()
+		conn.Close()
 	}()
 	cl := pb.NewNoFussPubSubClient(conn)
 	return &cl, nil
