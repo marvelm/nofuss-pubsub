@@ -13,7 +13,7 @@ type Config struct {
 	address string
 }
 
-func NewClient(ctx context.Context, config Config) (*pb.LKPubsubClient, error) {
+func NewClient(ctx context.Context, config Config) (*pb.NoFussPubSubClient, error) {
 	conn, err := grpc.Dial(config.address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		return nil, fmt.Errorf("did not connect: %v", err)
@@ -24,6 +24,6 @@ func NewClient(ctx context.Context, config Config) (*pb.LKPubsubClient, error) {
 			conn.Close()
 		}
 	}()
-	cl := pb.NewLKPubsubClient(conn)
+	cl := pb.NewNoFussPubSubClient(conn)
 	return &cl, nil
 }

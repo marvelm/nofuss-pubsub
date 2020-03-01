@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package service;
 
-service LKPubsub {
+service NoFussPubSub {
   rpc Put(PutRequest) returns (PutReply) {}
 
   rpc Subscribe(SubscribeRequest) returns (stream SubscribeReply) {}

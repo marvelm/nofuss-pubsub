@@ -29,7 +29,7 @@ func TestEnforceMaxItems(t *testing.T) {
 	server := &server{db: db, offsets: gen_offsets(ctx, db), config: load_config()}
 
 	s := grpc.NewServer()
-	pb.RegisterLKPubsubServer(s, server)
+	pb.RegisterNoFussPubSubServer(s, server)
 	listener := bufconn.Listen(1024 * 1024)
 	go s.Serve(listener)
 
@@ -40,7 +40,7 @@ func TestEnforceMaxItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := pb.NewLKPubsubClient(conn)
+	client := pb.NewNoFussPubSubClient(conn)
 
 	const max_items = 100
 	const total = max_items + 20

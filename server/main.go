@@ -32,7 +32,7 @@ func main() {
 	defer listener.Close()
 
 	s := grpc.NewServer()
-	pb.RegisterLKPubsubServer(s, &server{config: conf, db: db, offsets: offsets})
+	pb.RegisterNoFussPubSubServer(s, &server{config: conf, db: db, offsets: offsets})
 	if err := s.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

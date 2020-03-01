@@ -16,7 +16,7 @@ type server struct {
 	offsets <-chan uint64
 	config
 
-	pb.UnimplementedLKPubsubServer
+	pb.UnimplementedNoFussPubSubServer
 }
 
 // key_prefix_internal is for storing internal information
@@ -154,7 +154,7 @@ func (s *server) Put(ctx context.Context, in *pb.PutRequest) (*pb.PutReply, erro
 	return &pb.PutReply{Offset: offset}, nil
 }
 
-func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_SubscribeServer) error {
+func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.NoFussPubSub_SubscribeServer) error {
 	topic_prefix := fmt_topic_prefix(in.Topic)
 	// Send all existing records
 	err := s.db.View(func(txn *badger.Txn) error {
