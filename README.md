@@ -1,2 +1,2 @@
-# durable-pubsub
-A simple, no-fuss, single-node durable PubSub.
+# nofuss-pubsub
+A simple, single-node durable PubSub.
