@@ -34,12 +34,12 @@ func trim_items(db *badger.DB, max_items uint64) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		// Pick only keys that are part of a topic
 		for it.Rewind(); it.Valid(); it.Next() {
 			if it.Item().IsDeletedOrExpired() {
 				continue
 			}
 
+			// Pick only keys that are part of a topic
 			if !bytes.HasPrefix(it.Item().Key(), key_prefix_topic) {
 				continue
 			}
@@ -71,12 +71,12 @@ func trim_items(db *badger.DB, max_items uint64) {
 		defer it.Close()
 
 		var i uint64 = 0
-		// Only keys that are part of a topic
 		for it.Rewind(); it.Valid(); it.Next() {
 			if it.Item().IsDeletedOrExpired() {
 				continue
 			}
 
+			// Only keys that are part of a topic
 			if !bytes.HasPrefix(it.Item().Key(), key_prefix_topic) {
 				continue
 			}
@@ -86,6 +86,7 @@ func trim_items(db *badger.DB, max_items uint64) {
 				break
 			}
 
+			// Copy here because it.Item.Key is mutating in-place
 			err := txn.Delete(it.Item().KeyCopy(nil))
 			if err != nil {
 				return err
