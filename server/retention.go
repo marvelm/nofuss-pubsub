@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"log"
 	"time"
@@ -24,6 +25,7 @@ func retention_thread(ctx context.Context, db *badger.DB, max_items uint64, inte
 func trim_items(db *badger.DB, max_items uint64) {
 	iteration_max := max_items * 2
 
+	// Count the total number of items
 	var num_items uint64 = 0
 	db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -32,8 +34,13 @@ func trim_items(db *badger.DB, max_items uint64) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
+		// Pick only keys that are part of a topic
 		for it.Rewind(); it.Valid(); it.Next() {
 			if it.Item().IsDeletedOrExpired() {
+				continue
+			}
+
+			if !bytes.HasPrefix(it.Item().Key(), key_prefix_topic) {
 				continue
 			}
 
@@ -64,8 +71,13 @@ func trim_items(db *badger.DB, max_items uint64) {
 		defer it.Close()
 
 		var i uint64 = 0
+		// Only keys that are part of a topic
 		for it.Rewind(); it.Valid(); it.Next() {
 			if it.Item().IsDeletedOrExpired() {
+				continue
+			}
+
+			if !bytes.HasPrefix(it.Item().Key(), key_prefix_topic) {
 				continue
 			}
 

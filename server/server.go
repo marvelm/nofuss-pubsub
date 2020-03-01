@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"log"
@@ -105,7 +106,7 @@ func gen_offsets(ctx context.Context, db *badger.DB) <-chan uint64 {
 	key = append(key, key_separator)
 	key = append(key, []byte("offsets")...)
 
-	// The bandwidth is the number of offsets which
+	// The bandwidth (1000) is the number of offsets which
 	// are generated and kept in memory to be used
 	seq, err := db.GetSequence(key, 1000)
 	if err != nil {
@@ -140,7 +141,10 @@ func (s *server) Put(ctx context.Context, in *pb.PutRequest) (*pb.PutReply, erro
 	key := fmt_key(in.Topic, in.Key, offset)
 
 	err := s.db.Update(func(tx *badger.Txn) error {
-		entry := badger.NewEntry(key, in.Data).WithTTL(s.config.retention)
+		entry := badger.NewEntry(key, in.Data)
+		if s.config.retention != 0 {
+			entry = entry.WithTTL(s.config.retention)
+		}
 		return tx.SetEntry(entry)
 	})
 	if err != nil {
@@ -151,6 +155,7 @@ func (s *server) Put(ctx context.Context, in *pb.PutRequest) (*pb.PutReply, erro
 }
 
 func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_SubscribeServer) error {
+	topic_prefix := fmt_topic_prefix(in.Topic)
 	// Send all existing records
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -159,12 +164,20 @@ func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_Subscribe
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		topic_prefix := fmt_topic_prefix(in.Topic)
-		seek_prefix := fmt_topic_prefix_with_offset(in.Topic, in.StartingOffset)
+		var seek_prefix []byte
+		if in.StartingOffset == 0 {
+			seek_prefix = topic_prefix
+		} else {
+			seek_prefix = fmt_topic_prefix_with_offset(in.Topic, in.StartingOffset)
+		}
 
-		for it.Seek(seek_prefix); it.ValidForPrefix(topic_prefix); it.Next() {
+		for it.Seek(seek_prefix); it.Valid(); it.Next() {
 			item := it.Item()
 			key := item.Key()
+			if !bytes.HasPrefix(key, topic_prefix) {
+				continue
+			}
+
 			_, offset := extract_from_key(key, in.Topic)
 			if offset < in.StartingOffset {
 				continue
@@ -191,6 +204,10 @@ func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_Subscribe
 	// Listen for new records and stream them to the client
 	return s.db.Subscribe(stream.Context(), func(kvs *badger_pb.KVList) {
 		for _, kv := range kvs.Kv {
+			if !bytes.HasPrefix(kv.Key, topic_prefix) {
+				continue
+			}
+
 			key, offset := extract_from_key(kv.Key, in.Topic)
 			if offset < in.StartingOffset {
 				continue
@@ -205,5 +222,5 @@ func (s *server) Subscribe(in *pb.SubscribeRequest, stream pb.LKPubsub_Subscribe
 				return
 			}
 		}
-	}, fmt_topic_prefix(in.Topic))
+	}, topic_prefix)
 }
